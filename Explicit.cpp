@@ -19,6 +19,15 @@ const double xTot = 400;
 const double PI = 3.14;
 
 
+/*!
+ *  \brief Send a vector to another node
+ *
+ *  Send a vector to another node with the function MPI_Send
+ *
+ *  \param vector the vector to send
+ *  \param dest the destination of the vector
+ *  \param comm the value of MPI_COMM_WORLD
+ */
 
 void send(vector<double> const& vector, int dest, MPI_Comm comm){
 	unsigned len = vector.size();
@@ -27,6 +36,16 @@ void send(vector<double> const& vector, int dest, MPI_Comm comm){
 		MPI_Send(vector.data(), len, MPI_DOUBLE, dest, 1, comm);
 	}
 }
+
+/*!
+ *  \brief Receive a vector from another node
+ *
+ *  Receive a vector from another node with the function MPI_Recv
+ *
+ *  \param vector the vector to receive
+ *  \param dest the source of the vector
+ *  \param comm the value of MPI_COMM_WORLD
+ */
 
 vector<double> recv(vector<double>& res, int src, MPI_Comm comm){
 	MPI_Status status;
@@ -39,6 +58,14 @@ vector<double> recv(vector<double>& res, int src, MPI_Comm comm){
 	return res;
 }
 
+/*!
+ *  \brief Print the vector given
+ *
+ *  Print every composant of the vector
+ *
+ *  \param vect A vector to print
+ */
+
 void showVector(vector <double> vect) {									//decalaration of the function which can show all the value of a vector of double
 	for (unsigned int i = 0; i < vect.size(); i++) {						//create a loop with i which will be used as an index
 		printf("%0.1f \n", vect[i]);								//print the value of the vector at the index i
@@ -46,11 +73,27 @@ void showVector(vector <double> vect) {									//decalaration of the function w
 	printf("\n");											//print a enter for more clarity
 }
 
+/*!
+ *  \brief function f(x)
+ *
+ *  Return the value of f(x)
+ *
+ *  \param x Value of x
+ *  \return Return a double, the value of f(x)
+ */
 double finitx(double x) {										//declaration of the function f(x)
 	if (x <= 50 || x >= 110)									//if x is lower than 50 or higher than 110 =>
 		return 0.0;										//return 0
 	return 100 * (sin(PI*(x - 50) / 60));								//if x is between 50 and 110 return the wave
 }
+
+/*!
+ *  \brief Create the vector f(x)
+ *
+ *  Get the value of f(x) for each x and put it in the return vector
+ *
+ *  \return Return a vector of every f(x)
+ */
 
 vector<double> finit() {										//declaration of the function which create the vector with all the value of f(x)
 	vector <double> res;										//decalartion of the vector of double
@@ -61,6 +104,16 @@ vector<double> finit() {										//declaration of the function which create the
 	}
 	return res;											//return the vector with all the value of f(x)
 }
+
+/*!
+ *  \brief Handle the Thomas algorithm
+ *
+ *  Function called to calculate the Thomas algorithm in serial
+ *
+ *  \param A The matrix A
+ *  \param f The vector f
+ *  \return Return a vector of the solution at time n + 1
+ */
 
 vector <double> ThomasAlgorithmSerial(Matrix A, vector <double> f) {							//declare the function which handle the thomas algorithm
 	int sizeOfA = A.getNcols();																			//declare an int x to the number of columunm of the matrix A
@@ -105,6 +158,16 @@ vector <double> ThomasAlgorithmSerial(Matrix A, vector <double> f) {							//dec
 
 	return x;																							//return vector x
 }
+
+/*!
+ *  \brief Handle the Thomas algorithm
+ *
+ *  Function called to calculate the Thomas algorithm in parallel
+ *
+ *  \param A The matrix A
+ *  \param f The vector f
+ *  \return Return a vector of the solution at time n + 1
+ */
 
 vector <double> ThomasAlgorithmPara(Matrix A, vector <double> f) {							//declare the function which handle the thomas algorithm
 	int sizeOfA = A.getNcols();																			//declare an int x to the number of columunm of the matrix A
@@ -192,6 +255,18 @@ vector<double> analyticalSolution(double t) {								//declaration of the functi
 	return res;											//return the vector with all the value of f(x) analytical
 }
 
+//Scheme definitions
+
+/*!
+ *  \brief Explicit Upwind FTBS function
+ *
+ *  Function called to calculate the function f at time n + 1 in serial
+ *
+ *  \param previousSolution A vector of f at time n
+ *  \param Dt Delta t
+ *  \return Return a vector of the solution at time n + 1
+ */
+
 vector<double> ExplicitUpwindFTBSSerial(vector <double> previousSolution, double Dt) {			//declaration of the only function of the class which return a vector of the value of f at n+1
 	vector <double> res;										//initiate a vector of double to res
 	const double c = (double)u*Dt / dx;								//define the value of c
@@ -205,6 +280,16 @@ vector<double> ExplicitUpwindFTBSSerial(vector <double> previousSolution, double
 	}
 	return res;											//return the vector of double res
 }
+
+/*!
+ *  \brief Explicit Upwind FTBS function
+ *
+ *  Function called to calculate the function f at time n + 1 in parallel
+ *
+ *  \param previousSolution A vector of f at time n
+ *  \param Dt Delta t
+ *  \return Return a vector of the solution at time n + 1
+ */
 
 vector<double> ExplicitUpwindFTBSPara(vector <double> previousSolution, double Dt) {
 
@@ -235,6 +320,17 @@ vector<double> ExplicitUpwindFTBSPara(vector <double> previousSolution, double D
 	}
 }
 
+
+/*!
+ *  \brief Impplicit Upwind FTBS function
+ *
+ *  Function called to calculate the function f at time n + 1 in serial
+ *
+ *  \param previousSolution A vector of f at time n
+ *  \param Dt Delta t
+ *  \return Return a vector of the solution at time n + 1
+ */
+
 vector<double> ImplicitUpwindFTBSSerial(vector <double> previousSolution, double Dt) {	//declaration of the function of the Implicit FTCS
 	//declaration of all the variable
 	vector <double> resX;																			//create a vector of double resX
@@ -255,6 +351,17 @@ vector<double> ImplicitUpwindFTBSSerial(vector <double> previousSolution, double
 	}
 	return ThomasAlgorithmSerial(A, previousSolution);																		//call the Thomas algorithm in the Implicit Scheme class with the A Matrix and the previous solution																//return the value of resX
 }
+
+
+/*!
+ *  \brief Implicit Upwind FTBS function
+ *
+ *  Function called to calculate the function f at time n + 1 in parallel
+ *
+ *  \param previousSolution A vector of f at time n
+ *  \param Dt Delta t
+ *  \return Return a vector of the solution at time n + 1
+ */
 
 vector<double> ImplicitUpwindFTBSPara(vector <double> previousSolution, double Dt) {		//declaration of the function of the Implicit Upwind FTBS																								//create a variable of common to use all the common variable
 	
@@ -291,6 +398,15 @@ vector<double> ImplicitUpwindFTBSPara(vector <double> previousSolution, double D
 }
 
 
+/*!
+ *  \brief Implicit FTCS function
+ *
+ *  Function called to calculate the function f at time n + 1 in serial
+ *
+ *  \param previousSolution A vector of f at time n
+ *  \param Dt Delta t
+ *  \return Return a vector of the solution at time n + 1
+ */
 
 vector<double> ImplicitFTCSSerial(vector <double> previousSolution, double Dt) {	//declaration of the function of the Implicit FTCS
 	//declaration of all the variable
@@ -315,6 +431,15 @@ vector<double> ImplicitFTCSSerial(vector <double> previousSolution, double Dt) {
 	return ThomasAlgorithmSerial(A, previousSolution);																		//call the Thomas algorithm in the Implicit Scheme class with the A Matrix and the previous solution																//return the value of resX
 }
 
+/*!
+ *  \brief Implicit FTCS function
+ *
+ *  Function called to calculate the function f at time n + 1 in parallel
+ *
+ *  \param previousSolution A vector of f at time n
+ *  \param Dt Delta t
+ *  \return Return a vector of the solution at time n + 1
+ */
 
 vector<double> ImplicitFTCSPara(vector <double> previousSolution, double Dt) {	//declaration of the function of the Implicit FTCS
 	//declaration of all the variable
