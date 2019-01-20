@@ -468,11 +468,11 @@ vector<double> ImplicitFTCSPara(vector <double> previousSolution, double Dt) {	/
 /*!
  *  \brief Main function
  *
- *  Let the user choosen the scheme and the delta t.
+ *  Two for loop to go trough each case
  *	Delta t is affected in this function.
- *	call showResultsInConsole(const int type, const double dt)
+ *	call each function to calculate the correct vector
  *
- *  \return If everythings works correctly, return 1
+ *  \return If everythings works correctly, return 0
  */
 
 int main(int argc, char *argv []) {
