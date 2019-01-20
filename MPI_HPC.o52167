@@ -1,0 +1,27 @@
+----------- EXPLICIT UPWIND FTBS -------------------
+Delta t: 0.002000 
+The time taken is 0.004291
+----------- EXPLICIT UPWIND FTBS -------------------
+Delta t: 0.001000 
+The time taken is 0.006304
+----------- EXPLICIT UPWIND FTBS -------------------
+Delta t: 0.000500 
+The time taken is 0.012565
+----------- IMPLICIT UPWIND FTBS -------------------
+Delta t: 0.002000 
+The time taken is 0.004856
+----------- IMPLICIT UPWIND FTBS -------------------
+Delta t: 0.001000 
+The time taken is 0.008961
+----------- IMPLICIT UPWIND FTBS -------------------
+Delta t: 0.000500 
+The time taken is 0.017993
+----------- IMPLICIT FTCS -------------------
+Delta t: 0.002000 
+The time taken is 8.953081
+----------- IMPLICIT FTCS -------------------
+Delta t: 0.001000 
+The time taken is 17.860331
+----------- IMPLICIT FTCS -------------------
+Delta t: 0.000500 
+The time taken is 35.680297
