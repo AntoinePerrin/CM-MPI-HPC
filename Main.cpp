@@ -323,19 +323,18 @@ vector<double> ExplicitUpwindFTBSPara(vector <double> previousSolution, double D
 			res.push_back((1 - c)*previousSolution[index] + c*previousSolution[index - 1]);		//add the value of the scheme to the vector res
 			x += dx;																			//add the value of delta x to x
 		}
-		send(res,1,MPI_COMM_WORLD);																//send the first part of the vector to the seconde node
 	} else {																					//if the function run on the other node =>
 		res = recv(res,myrank-1,MPI_COMM_WORLD);												//receive the previous part from the previous node
 		double x = dx*nbPoint* myrank;															//define a double x as dx
 		for(unsigned int index = nbPoint *(myrank); index < nbPoint*(1+myrank); index++) {		//create loop
 			res.push_back((1 - c)*previousSolution[index] + c*previousSolution[index - 1]);		//add the value of the scheme to the vector res
 			x += dx;																			//add the value of delta x to x
-		}	
-		if (myrank == npes-1){																	//if the function run on the last node =>
-			return res;																			//return the vector res
-		} else {																				//else =>
-			send(res,myrank+1,MPI_COMM_WORLD);													//send the vector res to next node
 		}
+	}
+	if (myrank == npes-1){																		//if the function run on the last node =>
+		return res;																				//return the vector res
+	} else {																					//else =>
+		if (myrank +1 <= npes - 1 )send(res,myrank+1,MPI_COMM_WORLD);							//send the vector res to next node
 	}
 }
 
@@ -406,7 +405,7 @@ vector<double> ImplicitUpwindFTBSPara(vector <double> previousSolution, double D
 		}
 		return res;																				//return the vector res
 	} else {																					//else =>
-		send(res,myrank+1,MPI_COMM_WORLD);														//send the vector res to the next node
+		if (myrank +1 <= npes -1 )send(res,myrank+1,MPI_COMM_WORLD);														//send the vector res to the next node
 		for (unsigned int i = 0; i < res.size(); i++){											//create a loop for all the element of the vector res
 			res [i] = res[i] / (1+c);															//divide all the element of res by 1+c
 		}
@@ -502,7 +501,7 @@ int main(int argc, char *argv []) {
 	
 	double time1 , time2;
 	for(unsigned int parallel = 0; parallel <= 1; parallel++){
-		if(parallel == 0 ) {printf("The programm run in serial \n");} else {printf("The programm run in parallel\n");}
+		if(myrank == npes - 1){if(parallel == 0 ) {printf("The programm run in serial \n");} else {printf("The programm run in parallel\n");}}
 		//1 for EXPLICIT UPWIND FTBS  2 for IMPLICIT UPWIND FTBS 3 for IMPLICIT FTCS
 		for (unsigned int type = 1; type <= 3 ; type++){											//declare a int type
 		//1 for dt = 0.002 2 for dt = 0.001 3 for dt = 0.0005
@@ -622,7 +621,7 @@ int main(int argc, char *argv []) {
 					for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
 						double nLoop = 0;															//define the n of the loop to 0
 						while (nLoop <= 0.1) {														//create loop until nLoop <0.1
-							if(parallel == 1){														//if we want parallel calculate =>
+							if(parallel == 1 && npes > 4){														//if we want parallel calculate =>
 								solution = ImplicitFTCSPara(solution, Dt);							//call the function which calculate the solution at n+1
 							} else {																//else =>
 								solution = ImplicitFTCSSerial(solution, Dt);						//call the function which calculate the solution at n+1
