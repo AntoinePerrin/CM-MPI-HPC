@@ -11,7 +11,7 @@
 using namespace std;
 
 
-int npes, myrank, nNode = 4, Parallele = 0;
+int npes, myrank;
 
 const double dx = 0.5;
 const double u = 250;
@@ -196,7 +196,7 @@ vector <double> ThomasAlgorithmPara(Matrix A, vector <double> f) {								//decl
 		send(a,1,MPI_COMM_WORLD);																//send the vector a to the node 1
 		send(b,1,MPI_COMM_WORLD);																//send the vector b to the node 1
 		send(c,1,MPI_COMM_WORLD);																//send the vector c to the node 1
-		x = recv(x, nNode - 1, MPI_COMM_WORLD);													//stuck the node 0 until the other node complete
+		x = recv(x, npes - 1, MPI_COMM_WORLD);													//stuck the node 0 until the other node complete
 	} else if (myrank == 1){																	//if the function run on the second node
 		a = recv(a,0,MPI_COMM_WORLD);															//receive the vector a from the node 0
 		b = recv(b,0,MPI_COMM_WORLD);															//receive the vector b from the node 0
@@ -218,7 +218,7 @@ vector <double> ThomasAlgorithmPara(Matrix A, vector <double> f) {								//decl
 		send(dPrime,2,MPI_COMM_WORLD);															//send the vector dPrime to the node 2
 		send(bPrime,2,MPI_COMM_WORLD);															//send the vector bPrime to the node 2
 		send(c,2,MPI_COMM_WORLD);																//send the vector c to the node 2
-		x = recv(x, nNode - 1, MPI_COMM_WORLD);													//stuck the node 1 until the other node complete
+		x = recv(x, npes - 1, MPI_COMM_WORLD);													//stuck the node 1 until the other node complete
 	} else if (myrank == 2){																	//if the function run on the third node
 		dPrime = recv(dPrime,1,MPI_COMM_WORLD);													//receive the vector dPrime from the node 1
 		bPrime = recv(bPrime,1,MPI_COMM_WORLD);													//receive the vector bPrime from the node 1
@@ -228,9 +228,9 @@ vector <double> ThomasAlgorithmPara(Matrix A, vector <double> f) {								//decl
 		for (int i = sizeOfA - 2; i >= 0; i--)													//create a loop in reverse, the index i start at sizeOfA and decrease until reach 0
 			x[i] = (dPrime[i] - c[i] * x[i + 1]) / bPrime[i];									//set x at index i
 		
-		send(x,nNode - 1,MPI_COMM_WORLD);														//send the vector x to the last node
-		x = recv(x, nNode - 1, MPI_COMM_WORLD);													//stuck the node 2 until the other node complete
-	} else if (myrank == nNode - 1){															//if the function run on the last node
+		send(x,npes - 1,MPI_COMM_WORLD);														//send the vector x to the last node
+		x = recv(x, npes - 1, MPI_COMM_WORLD);													//stuck the node 2 until the other node complete
+	} else if (myrank == npes - 1){															//if the function run on the last node
 		x = recv(x,2,MPI_COMM_WORLD);															//receive the vector x from the node 2
 		send(x,0,MPI_COMM_WORLD);																//send the vector x to the first node
 		send(x,1,MPI_COMM_WORLD);																//send the vector x to the second node
@@ -314,7 +314,7 @@ vector<double> ExplicitUpwindFTBSPara(vector <double> previousSolution, double D
 
 	vector <double> res;																		//initiate a vector of double to res
 	const double c = (double)u*Dt / dx;															//define the value of c
-	const int nbPoint = (xTot/dx) / nNode;														//define the number of point each node will have to calculate
+	const int nbPoint = (xTot/dx) / npes;														//define the number of point each node will have to calculate
 	
 	if(myrank == 0){																			//if the function run on the first node =>
 		res.push_back((1 - c)*previousSolution[0]);												//calculate the first value
@@ -331,7 +331,7 @@ vector<double> ExplicitUpwindFTBSPara(vector <double> previousSolution, double D
 			res.push_back((1 - c)*previousSolution[index] + c*previousSolution[index - 1]);		//add the value of the scheme to the vector res
 			x += dx;																			//add the value of delta x to x
 		}	
-		if (myrank == nNode-1){																	//if the function run on the last node =>
+		if (myrank == npes-1){																	//if the function run on the last node =>
 			return res;																			//return the vector res
 		} else {																				//else =>
 			send(res,myrank+1,MPI_COMM_WORLD);													//send the vector res to next node
@@ -385,7 +385,7 @@ vector<double> ImplicitUpwindFTBSSerial(vector <double> previousSolution, double
 vector<double> ImplicitUpwindFTBSPara(vector <double> previousSolution, double Dt) {			//declaration of the function of the Implicit Upwind FTBS
 	vector<double> res(previousSolution.size());												//initiate a vector of double to res
 	const double c = (double)u*Dt / dx;															//define the value of c
-	const int nbPoint = (xTot/dx) / nNode;														//define the number of point each node will have to calculate
+	const int nbPoint = (xTot/dx) / npes;														//define the number of point each node will have to calculate
 	const double k = ((-c)/(1 + c));															//define a constant k
 	
 	if(myrank == 0){																			//if the function run on the fist node =>
@@ -400,7 +400,7 @@ vector<double> ImplicitUpwindFTBSPara(vector <double> previousSolution, double D
 			res[index] = (previousSolution[index] - k * res[index - 1]);						//set dPrime at index i
 		}
 	}	
-	if (myrank == nNode-1){																		//if the function is run the last node =>
+	if (myrank == npes-1){																		//if the function is run the last node =>
 		for (unsigned int i = 0; i < res.size(); i++){											//create a loop for all the element of the vector res
 			res [i] = res[i] / (1+c);															//divide all the element of res by 1+c
 		}
@@ -502,155 +502,157 @@ int main(int argc, char *argv []) {
 	setprecision(10);
 	
 	double time1 , time2;
-
-	//1 for EXPLICIT UPWIND FTBS  2 for IMPLICIT UPWIND FTBS 3 for IMPLICIT FTCS
-	for (unsigned int type = 1; type <= 3 ; type++){											//declare a int type
-	//1 for dt = 0.002 2 for dt = 0.001 3 for dt = 0.0005
-		for (unsigned int dtIndex = 1; dtIndex <= 3; dtIndex++){								//declare an int dtIndex
-			double Dt;																			//declare a double dt
-			if (dtIndex == 1)																	//if dtIndex equal 1 =>
-				Dt = 0.002;																		//dt equal 0.002
-			else if (dtIndex == 2)																//if dtIndex equal 2 =>
-				Dt = 0.001;																		//dt equal 0.001
-			else if (dtIndex == 3)																//if dtIndex equal 3 =>
-				Dt = 0.0005;																	//dt equal 0.0005
-		
-			if (type == 1) {																	//if the type is 1 =>
-				if(myrank == nNode - 1){														//if the function run the last node =>
-					printf("----------- EXPLICIT UPWIND FTBS -------------------\n");			//Print a the scheme choosen
-					printf("Delta t: %f \n", Dt);												//print the value of Delta t
-				}
-				time1 = MPI_Wtime();															//get the start time
-				// cout << "\nResult for dt = " << Dt << ": \n";								//print the value of the delta t
-				vector<double> solution;														//intiate a vector of double solution
-				// cout << "DELTA X: " << dx << "---- X TOT: " << xTot << "\n";					//print the value of delta x
-				solution = finit();																//affect the result of the first solution to the vector solution
-				vector <double> error(solution.size());											//create a vector of double error which has the same size of the solution
-				double n = 0;																	//initate a double n at 0
-				for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
-					double nLoop = 0;															//define the n of the loop to 0
-					while (nLoop <= 0.1) {														//while nloop is lower than 0.1
-						if(Parallele == 1){														//if we want parallel calculate =>
-							solution = ExplicitUpwindFTBSPara(solution, Dt);					//call the function which calculate the solution at n+1
-						} else {																//else =>
-							solution = ExplicitUpwindFTBSSerial(solution, Dt);					//call the function which calculate the solution at n+1
-						}
-						n += Dt;																//add delta t to n
-						nLoop += Dt;															//add delta t to nLoop
+	for(unsigned int parallele = 0; parallele <= 1; parallele++){
+		if(parallele == 0 ) {printf("The programm run in serial");} else {printf("The programm run in parallel");}
+		//1 for EXPLICIT UPWIND FTBS  2 for IMPLICIT UPWIND FTBS 3 for IMPLICIT FTCS
+		for (unsigned int type = 1; type <= 3 ; type++){											//declare a int type
+		//1 for dt = 0.002 2 for dt = 0.001 3 for dt = 0.0005
+			for (unsigned int dtIndex = 1; dtIndex <= 3; dtIndex++){								//declare an int dtIndex
+				double Dt;																			//declare a double dt
+				if (dtIndex == 1)																	//if dtIndex equal 1 =>
+					Dt = 0.002;																		//dt equal 0.002
+				else if (dtIndex == 2)																//if dtIndex equal 2 =>
+					Dt = 0.001;																		//dt equal 0.001
+				else if (dtIndex == 3)																//if dtIndex equal 3 =>
+					Dt = 0.0005;																	//dt equal 0.0005
+			
+				if (type == 1) {																	//if the type is 1 =>
+					if(myrank == npes - 1){														//if the function run the last node =>
+						printf("----------- EXPLICIT UPWIND FTBS -------------------\n");			//Print a the scheme choosen
+						printf("Delta t: %f \n", Dt);												//print the value of Delta t
 					}
-					if(myrank == nNode - 1){													//if the function run the last node =>
-						// cout << "NUMERICAL solution for n = " << n << ":\n";					//print a title
-						//printf("n = %f \n", n);												//print the value of n and an enter
-						//showVector(solution);													//print the vector of the solution
-						/*cout << "\n";															//print an enter
-						cout << "ANALYTICAL solution for n = " << n << ":\n";					//print a title before print a solution
-						showVector(analyticalSolution(n));										//print the vector of analytical solution
-				 		cout << "\n";	*/														//print an enter
-						/*
-						for (unsigned int i = 0; i < solution.size();i++){						//create a loop with i which will be used as an index
-							error[i] = solution[i] - analyticalSolution(n)[i];					//set to the vector at index i the diffrence between the solution and the analytical solution
+					time1 = MPI_Wtime();															//get the start time
+					// cout << "\nResult for dt = " << Dt << ": \n";								//print the value of the delta t
+					vector<double> solution;														//intiate a vector of double solution
+					// cout << "DELTA X: " << dx << "---- X TOT: " << xTot << "\n";					//print the value of delta x
+					solution = finit();																//affect the result of the first solution to the vector solution
+					vector <double> error(solution.size());											//create a vector of double error which has the same size of the solution
+					double n = 0;																	//initate a double n at 0
+					for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
+						double nLoop = 0;															//define the n of the loop to 0
+						while (nLoop <= 0.1) {														//while nloop is lower than 0.1
+							if(Parallele == 1){														//if we want parallel calculate =>
+								solution = ExplicitUpwindFTBSPara(solution, Dt);					//call the function which calculate the solution at n+1
+							} else {																//else =>
+								solution = ExplicitUpwindFTBSSerial(solution, Dt);					//call the function which calculate the solution at n+1
+							}
+							n += Dt;																//add delta t to n
+							nLoop += Dt;															//add delta t to nLoop
 						}
-					
-						cout << "ERROR for n = " << n << ":\n";									//print a title before print vector
-						showVector(error);														//show the vector error
-						*/
-					}
-				}
-				if(myrank == nNode - 1){														//if the function run the last node =>
-					time2 = MPI_Wtime();														//get the finish time
-					printf("The time taken is %f\n", time2-time1);								//print the duration
-				}
-			} else if (type == 2) {																//if the type is 2 =>
-				// cout << "\nResult for dt = " << Dt << ": \n";								//print the value of delta t
-				vector<double> solution;														//create a vector of double solution
-				// cout << "DELTA X: " << fx.dx << "---- X TOT: " << fx.xTot << "\n";			//print the value of delta x
-				if (myrank == nNode - 1) {														//if the function run the last node =>
-					printf("----------- IMPLICIT UPWIND FTBS -------------------\n");			//print a title
-					printf("Delta t: %f \n", Dt);												//print the value of Delta t
-				}
-				time1 = MPI_Wtime();															//get the start time
-				solution = finit();																//affect the result of the first solution to the vector solution
-				//if(myrank == nNode - 1 )showVector(solution);									//affect the vector from the function finit in commons to solution
-				vector <double> error(solution.size());											//create a vector of double error which has the same size as solution 
-				double n = 0;																	//create a double n equal to 0
-				for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
-					double nLoop = 0;															//define the n of the loop to 0
-					while (nLoop <= 0.1) {														//create loop until nLoop <0.1
-						if(Parallele == 1){														//if we want parallel calculate =>
-							solution = ImplicitUpwindFTBSPara(solution, Dt);					//call the function which calculate the solution at n+1
-						}else{																	//else =>
-							solution = ImplicitUpwindFTBSSerial(solution, Dt);					//call the function which calculate the solution at n+1
-						}
-						n += Dt;																//add delta t to n
-						nLoop += Dt;															//add delta t to nLoop
-					}
-					
-					if(myrank == nNode - 1){													//if the function run the last node =>
-						// cout << "NUMERICAL solution for n = " << n << ":\n";					//print a title
-						//printf("n = %f \n", n);												//print the value of n and an enter
-						//showVector(solution);													//print the vector of the solution
-						/*cout << "\n";															//print an enter
-						cout << "ANALYTICAL solution for n = " << n << ":\n";					//print a title before print a solution
-						showVector(analyticalSolution(n));										//print the vector of analytical solution
-						cout << "\n";	*/														//print an enter
-						/*
-						for (unsigned int i = 0; i < solution.size();i++){						//create a loop with i which will be used as an index
-							error[i] = solution[i] - analyticalSolution(n)[i];					//set to the vector at index i the diffrence between the solution and the analytical solution
-						}
-					
-						cout << "ERROR for n = " << n << ":\n";									//print a title before print vector
-						showVector(error);														//show the vector error
-						*/
-					}
-				}
-				if(myrank == nNode - 1){														//if the function run the last node =>
-					time2 = MPI_Wtime();														//get the finish time
-					printf("The time taken is %f\n", time2-time1);								//print the duration
-				}																				//call the function resultDt with delta t
-			} else if (type == 3) {																//if the type is 3 =>
-				// cout << "\nResult for dt = " << Dt << ": \n";								//print the value of delta t
-				vector<double> solution;														//create a vector of double solution
-				// cout << "DELTA X: " << fx.dx << "---- X TOT: " << fx.xTot << "\n";			//print the value of delta x
-				if (myrank == nNode - 1) {														//if the function run the last node =>
-					printf("----------- IMPLICIT FTCS -------------------\n");					//print a title
-					printf("Delta t: %f \n", Dt);												//print the value of Delta t
-				}
-				time1 = MPI_Wtime();															//get the start time
-				solution = finit();																//affect the vector from the function finit in commons to solution
-				vector <double> error(solution.size());											//create a vector of double error which has the same size as solution 
-				double n = 0;																	//create a double n equal to 0
-				for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
-					double nLoop = 0;															//define the n of the loop to 0
-					while (nLoop <= 0.1) {														//create loop until nLoop <0.1
-						if(Parallele == 1){														//if we want parallel calculate =>
-							solution = ImplicitFTCSPara(solution, Dt);							//call the function which calculate the solution at n+1
-						} else {																//else =>
-							solution = ImplicitFTCSSerial(solution, Dt);						//call the function which calculate the solution at n+1
-						}
-						n += Dt;																//add delta t to n
-						nLoop += Dt;															//add delta t to nLoop
-					}
-					if(myrank == nNode - 1){													//if the function run the last node =>
-						// cout << "NUMERICAL solution for n = " << n << ":\n";					//print a title
-						//printf("n = %f \n", n);												//print the value of n and an enter
-						//showVector(solution);													//print the vector of the solution
-						/*cout << "\n";															//print an enter
-						cout << "ANALYTICAL solution for n = " << n << ":\n";					//print a title before print a solution
-						showVector(analyticalSolution(n));										//print the vector of analytical solution
-						cout << "\n";	*/														//print an enter
+						if(myrank == npes - 1){													//if the function run the last node =>
+							// cout << "NUMERICAL solution for n = " << n << ":\n";					//print a title
+							//printf("n = %f \n", n);												//print the value of n and an enter
+							//showVector(solution);													//print the vector of the solution
+							/*cout << "\n";															//print an enter
+							cout << "ANALYTICAL solution for n = " << n << ":\n";					//print a title before print a solution
+							showVector(analyticalSolution(n));										//print the vector of analytical solution
+							cout << "\n";	*/														//print an enter
+							/*
+							for (unsigned int i = 0; i < solution.size();i++){						//create a loop with i which will be used as an index
+								error[i] = solution[i] - analyticalSolution(n)[i];					//set to the vector at index i the diffrence between the solution and the analytical solution
+							}
 						
-						/*for (unsigned int i = 0; i < solution.size();i++){					//create a loop with i which will be used as an index
-							error[i] = solution[i] - analyticalSolution(n)[i];					//set to the vector at index i the diffrence between the solution and the analytical solution
+							cout << "ERROR for n = " << n << ":\n";									//print a title before print vector
+							showVector(error);														//show the vector error
+							*/
 						}
-
-						cout << "ERROR for n = " << n << ":\n";									//print a title before print vector
-						showVector(error);														//show the vector error
-						*/
 					}
-				}
-				if(myrank == nNode - 1){														//if the function run the last node =>
-					time2 = MPI_Wtime();														//get the finish time
-					printf("The time taken is %f\n", time2-time1);								//print the duration
+					if(myrank == npes - 1){														//if the function run the last node =>
+						time2 = MPI_Wtime();														//get the finish time
+						printf("The time taken is %f\n", time2-time1);								//print the duration
+					}
+				} else if (type == 2) {																//if the type is 2 =>
+					// cout << "\nResult for dt = " << Dt << ": \n";								//print the value of delta t
+					vector<double> solution;														//create a vector of double solution
+					// cout << "DELTA X: " << fx.dx << "---- X TOT: " << fx.xTot << "\n";			//print the value of delta x
+					if (myrank == npes - 1) {														//if the function run the last node =>
+						printf("----------- IMPLICIT UPWIND FTBS -------------------\n");			//print a title
+						printf("Delta t: %f \n", Dt);												//print the value of Delta t
+					}
+					time1 = MPI_Wtime();															//get the start time
+					solution = finit();																//affect the result of the first solution to the vector solution
+					//if(myrank == npes - 1 )showVector(solution);									//affect the vector from the function finit in commons to solution
+					vector <double> error(solution.size());											//create a vector of double error which has the same size as solution 
+					double n = 0;																	//create a double n equal to 0
+					for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
+						double nLoop = 0;															//define the n of the loop to 0
+						while (nLoop <= 0.1) {														//create loop until nLoop <0.1
+							if(Parallele == 1){														//if we want parallel calculate =>
+								solution = ImplicitUpwindFTBSPara(solution, Dt);					//call the function which calculate the solution at n+1
+							}else{																	//else =>
+								solution = ImplicitUpwindFTBSSerial(solution, Dt);					//call the function which calculate the solution at n+1
+							}
+							n += Dt;																//add delta t to n
+							nLoop += Dt;															//add delta t to nLoop
+						}
+						
+						if(myrank == npes - 1){													//if the function run the last node =>
+							// cout << "NUMERICAL solution for n = " << n << ":\n";					//print a title
+							//printf("n = %f \n", n);												//print the value of n and an enter
+							//showVector(solution);													//print the vector of the solution
+							/*cout << "\n";															//print an enter
+							cout << "ANALYTICAL solution for n = " << n << ":\n";					//print a title before print a solution
+							showVector(analyticalSolution(n));										//print the vector of analytical solution
+							cout << "\n";	*/														//print an enter
+							/*
+							for (unsigned int i = 0; i < solution.size();i++){						//create a loop with i which will be used as an index
+								error[i] = solution[i] - analyticalSolution(n)[i];					//set to the vector at index i the diffrence between the solution and the analytical solution
+							}
+						
+							cout << "ERROR for n = " << n << ":\n";									//print a title before print vector
+							showVector(error);														//show the vector error
+							*/
+						}
+					}
+					if(myrank == npes - 1){														//if the function run the last node =>
+						time2 = MPI_Wtime();														//get the finish time
+						printf("The time taken is %f\n", time2-time1);								//print the duration
+					}																				//call the function resultDt with delta t
+				} else if (type == 3) {																//if the type is 3 =>
+					// cout << "\nResult for dt = " << Dt << ": \n";								//print the value of delta t
+					vector<double> solution;														//create a vector of double solution
+					// cout << "DELTA X: " << fx.dx << "---- X TOT: " << fx.xTot << "\n";			//print the value of delta x
+					if (myrank == npes - 1) {														//if the function run the last node =>
+						printf("----------- IMPLICIT FTCS -------------------\n");					//print a title
+						printf("Delta t: %f \n", Dt);												//print the value of Delta t
+					}
+					time1 = MPI_Wtime();															//get the start time
+					solution = finit();																//affect the vector from the function finit in commons to solution
+					vector <double> error(solution.size());											//create a vector of double error which has the same size as solution 
+					double n = 0;																	//create a double n equal to 0
+					for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
+						double nLoop = 0;															//define the n of the loop to 0
+						while (nLoop <= 0.1) {														//create loop until nLoop <0.1
+							if(Parallele == 1){														//if we want parallel calculate =>
+								solution = ImplicitFTCSPara(solution, Dt);							//call the function which calculate the solution at n+1
+							} else {																//else =>
+								solution = ImplicitFTCSSerial(solution, Dt);						//call the function which calculate the solution at n+1
+							}
+							n += Dt;																//add delta t to n
+							nLoop += Dt;															//add delta t to nLoop
+						}
+						if(myrank == npes - 1){													//if the function run the last node =>
+							// cout << "NUMERICAL solution for n = " << n << ":\n";					//print a title
+							//printf("n = %f \n", n);												//print the value of n and an enter
+							//showVector(solution);													//print the vector of the solution
+							/*cout << "\n";															//print an enter
+							cout << "ANALYTICAL solution for n = " << n << ":\n";					//print a title before print a solution
+							showVector(analyticalSolution(n));										//print the vector of analytical solution
+							cout << "\n";	*/														//print an enter
+							
+							/*for (unsigned int i = 0; i < solution.size();i++){					//create a loop with i which will be used as an index
+								error[i] = solution[i] - analyticalSolution(n)[i];					//set to the vector at index i the diffrence between the solution and the analytical solution
+							}
+
+							cout << "ERROR for n = " << n << ":\n";									//print a title before print vector
+							showVector(error);														//show the vector error
+							*/
+						}
+					}
+					if(myrank == npes - 1){														//if the function run the last node =>
+						time2 = MPI_Wtime();														//get the finish time
+						printf("The time taken is %f\n", time2-time1);								//print the duration
+					}
 				}
 			}
 		}
