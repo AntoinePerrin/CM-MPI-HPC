@@ -197,7 +197,7 @@ vector <double> ThomasAlgorithmPara(Matrix A, vector <double> f) {								//decl
 		send(a,1,MPI_COMM_WORLD);																//send the vector a to the node 1
 		send(b,1,MPI_COMM_WORLD);																//send the vector b to the node 1
 		send(c,1,MPI_COMM_WORLD);																//send the vector c to the node 1
-		printf("Time spend on node 1 %f", MPI_Wtime()-time);
+		printf("Time spend on node 1 %f\n", MPI_Wtime()-time);
 		x = recv(x, npes - 1, MPI_COMM_WORLD);													//stuck the node 0 until the other node complete
 	} else if (myrank == 1){																	//if the function run on the second node
 		a = recv(a,0,MPI_COMM_WORLD);															//receive the vector a from the node 0
@@ -327,7 +327,7 @@ vector<double> ExplicitUpwindFTBSPara(vector <double> previousSolution, double D
 			x += dx;																			//add the value of delta x to x
 		}
 		send(res,1,MPI_COMM_WORLD);																//send the first part of the vector to the seconde node
-		printf("Time spend on node 1 %f", MPI_Wtime()-time);
+		printf("Time spend on node 1 %f\n", MPI_Wtime()-time);
 	} else {																					//if the function run on the other node =>
 		res = recv(res,myrank-1,MPI_COMM_WORLD);												//receive the previous part from the previous node
 		double x = dx*nbPoint* myrank;															//define a double x as dx
@@ -398,7 +398,7 @@ vector<double> ImplicitUpwindFTBSPara(vector <double> previousSolution, double D
 		for(unsigned int index = 1; index < nbPoint; index++) {									//create loop
 			res[index] = (previousSolution[index] - k * res[index - 1]);						//set the element of the vector res
 		}
-		printf("Time spend on node 1 %f", MPI_Wtime()-time);
+		printf("Time spend on node 1 %f\n", MPI_Wtime()-time);
 	} else {																					//else =>
 		res = recv(res,myrank-1,MPI_COMM_WORLD);												//receive the previous part the vector res
 		double x = dx*nbPoint* myrank;															//define a double x as dx
@@ -510,7 +510,7 @@ int main(int argc, char *argv []) {
 	
 	double time1 , time2;
 	for(unsigned int parallel = 0; parallel <= 1; parallel++){
-		if(parallel == 0 ) {printf("The programm run in serial");} else {printf("The programm run in parallel");}
+		if(parallel == 0 ) {printf("The programm run in serial \n");} else {printf("The programm run in parallel\n");}
 		//1 for EXPLICIT UPWIND FTBS  2 for IMPLICIT UPWIND FTBS 3 for IMPLICIT FTCS
 		for (unsigned int type = 1; type <= 3 ; type++){											//declare a int type
 		//1 for dt = 0.002 2 for dt = 0.001 3 for dt = 0.0005
