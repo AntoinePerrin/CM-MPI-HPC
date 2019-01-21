@@ -182,6 +182,7 @@ vector <double> ThomasAlgorithmPara(Matrix A, vector <double> f) {								//decl
 	vector <double> c(sizeOfA);																	//declare a vector c
 																								//all of this vector have the same size which is sizeofA
 	if (myrank == 0){																			//if the function run on the first node
+		double time = MPI_Wtime();
 		for (int i = 0; i < sizeOfA; i++) {														//create a loop with an index i until i reach the sizeofA
 			b[i] = A[i][i];																		//set the vector b at the index i the value of the matrix A at [i][i]
 			if (i > 0){																			//if i higher than 0 =>
@@ -196,6 +197,7 @@ vector <double> ThomasAlgorithmPara(Matrix A, vector <double> f) {								//decl
 		send(a,1,MPI_COMM_WORLD);																//send the vector a to the node 1
 		send(b,1,MPI_COMM_WORLD);																//send the vector b to the node 1
 		send(c,1,MPI_COMM_WORLD);																//send the vector c to the node 1
+		printf("Time spend on node 1 %f", MPI_Wtime()-time);
 		x = recv(x, npes - 1, MPI_COMM_WORLD);													//stuck the node 0 until the other node complete
 	} else if (myrank == 1){																	//if the function run on the second node
 		a = recv(a,0,MPI_COMM_WORLD);															//receive the vector a from the node 0
@@ -317,6 +319,7 @@ vector<double> ExplicitUpwindFTBSPara(vector <double> previousSolution, double D
 	const int nbPoint = (xTot/dx) / npes;														//define the number of point each node will have to calculate
 	
 	if(myrank == 0){																			//if the function run on the first node =>
+		double time = MPI_Wtime();
 		res.push_back((1 - c)*previousSolution[0]);												//calculate the first value
 		double x = dx;																			//define a double x as dx
 		for(unsigned int index = 1; index < nbPoint; index++) {									//create loop
@@ -324,6 +327,7 @@ vector<double> ExplicitUpwindFTBSPara(vector <double> previousSolution, double D
 			x += dx;																			//add the value of delta x to x
 		}
 		send(res,1,MPI_COMM_WORLD);																//send the first part of the vector to the seconde node
+		printf("Time spend on node 1 %f", MPI_Wtime()-time);
 	} else {																					//if the function run on the other node =>
 		res = recv(res,myrank-1,MPI_COMM_WORLD);												//receive the previous part from the previous node
 		double x = dx*nbPoint* myrank;															//define a double x as dx
@@ -389,10 +393,12 @@ vector<double> ImplicitUpwindFTBSPara(vector <double> previousSolution, double D
 	const double k = ((-c)/(1 + c));															//define a constant k
 	
 	if(myrank == 0){																			//if the function run on the fist node =>
+		double time = MPI_Wtime();
 		res[0] = previousSolution[0];															//set the first element of the vector 
 		for(unsigned int index = 1; index < nbPoint; index++) {									//create loop
 			res[index] = (previousSolution[index] - k * res[index - 1]);						//set the element of the vector res
 		}
+		printf("Time spend on node 1 %f", MPI_Wtime()-time);
 	} else {																					//else =>
 		res = recv(res,myrank-1,MPI_COMM_WORLD);												//receive the previous part the vector res
 		double x = dx*nbPoint* myrank;															//define a double x as dx
@@ -478,7 +484,8 @@ vector<double> ImplicitFTCSPara(vector <double> previousSolution, double Dt) {		
 				A[i][j] = 0;																	//set the value to 0
 		}
 	}
-	return ThomasAlgorithmPara(A, previousSolution);											//call the Thomas algorithm with the A Matrix and the previous solution																//return the value of resX
+
+	return ThomasAlgorithmPara(A, previousSolution);											//call the Thomas algorithm with the A Matrix and the previous solution	 																						//return the value of resX
 }
 
 
@@ -502,8 +509,8 @@ int main(int argc, char *argv []) {
 	setprecision(10);
 	
 	double time1 , time2;
-	for(unsigned int parallele = 0; parallele <= 1; parallele++){
-		if(parallele == 0 ) {printf("The programm run in serial");} else {printf("The programm run in parallel");}
+	for(unsigned int parallel = 0; parallel <= 1; parallel++){
+		if(parallel == 0 ) {printf("The programm run in serial");} else {printf("The programm run in parallel");}
 		//1 for EXPLICIT UPWIND FTBS  2 for IMPLICIT UPWIND FTBS 3 for IMPLICIT FTCS
 		for (unsigned int type = 1; type <= 3 ; type++){											//declare a int type
 		//1 for dt = 0.002 2 for dt = 0.001 3 for dt = 0.0005
@@ -531,7 +538,7 @@ int main(int argc, char *argv []) {
 					for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
 						double nLoop = 0;															//define the n of the loop to 0
 						while (nLoop <= 0.1) {														//while nloop is lower than 0.1
-							if(Parallele == 1){														//if we want parallel calculate =>
+							if(parallel == 1){														//if we want parallel calculate =>
 								solution = ExplicitUpwindFTBSPara(solution, Dt);					//call the function which calculate the solution at n+1
 							} else {																//else =>
 								solution = ExplicitUpwindFTBSSerial(solution, Dt);					//call the function which calculate the solution at n+1
@@ -577,7 +584,7 @@ int main(int argc, char *argv []) {
 					for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
 						double nLoop = 0;															//define the n of the loop to 0
 						while (nLoop <= 0.1) {														//create loop until nLoop <0.1
-							if(Parallele == 1){														//if we want parallel calculate =>
+							if(parallel == 1){														//if we want parallel calculate =>
 								solution = ImplicitUpwindFTBSPara(solution, Dt);					//call the function which calculate the solution at n+1
 							}else{																	//else =>
 								solution = ImplicitUpwindFTBSSerial(solution, Dt);					//call the function which calculate the solution at n+1
@@ -623,7 +630,7 @@ int main(int argc, char *argv []) {
 					for(unsigned int nbLoop = 0 ; nbLoop < 5 ; nbLoop ++){							//creat a loop of 5 iteration
 						double nLoop = 0;															//define the n of the loop to 0
 						while (nLoop <= 0.1) {														//create loop until nLoop <0.1
-							if(Parallele == 1){														//if we want parallel calculate =>
+							if(parallel == 1){														//if we want parallel calculate =>
 								solution = ImplicitFTCSPara(solution, Dt);							//call the function which calculate the solution at n+1
 							} else {																//else =>
 								solution = ImplicitFTCSSerial(solution, Dt);						//call the function which calculate the solution at n+1
